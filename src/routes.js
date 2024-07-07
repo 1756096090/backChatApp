@@ -21,7 +21,7 @@ router.get('/test-rabbitmq', async (req, res) => {
         const connection = await connectRabbitMQ(RABBITMQ_URL);
         const channel = await connection.createChannel();
 
-        // Asegurarse de que exista la cola
+        // Asegurarse de quek exista la cola
         await channel.assertQueue(QUEUE_NAME, { durable: true });
 
         // Enviar un mensaje de prueba a la cola

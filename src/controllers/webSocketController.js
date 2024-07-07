@@ -1,35 +1,60 @@
-const express = require('express');
-const mongoose = require('mongoose');
 const WebSocket = require('ws');
 const {
-    buscarOcrearChat,
-    enviarMensaje,
-    obtenerChats
-} = require('./src/controllers/generalController');
-const {
+    getRabbitMQChannel,
+    assertQueue,
+    sendMessageToQueue,
+    closeChannel,
     recibirMensajesDeRabbitMQ
-} = require('./src/controllers/rabbitMqController');
+} = require('./rabbitMqController');
+const clients = new Map();
 
-const app = express();
-app.use(express.json());
+function handleJoinMessage(ws, chatId) {
+    if (!clients.has(chatId)) {
+        clients.set(chatId, new Set());
+    }
+    clients.get(chatId).add(ws);
+    recibirMensajesDeRabbitMQ(chatId, ws).catch(console.error);
+}
 
-const mongoUrl = 'mongodb://localhost:27017/chatApp';
-mongoose.connect(mongoUrl)
-    .then(() => console.log('Conectado a MongoDB'))
-    .catch((err) => console.error('Error al conectar a MongoDB:', err.message));
+async function handleMessage(channel, chatQueue, fullMessage) {
+    await assertQueue(channel, chatQueue);
+    await sendMessageToQueue(channel, chatQueue, fullMessage);
+}
 
-app.post('/chat', buscarOcrearChat);
-app.post('/mensaje', enviarMensaje);
-app.get('/chat/:chatId', obtenerChats);
-
-const server = app.listen(8080, () => {
-    console.log('Servidor de Express escuchando en el puerto 8080');
-});
-
-const wss = new WebSocket.Server({ server });
-wss.on('connection', (ws) => {
-    ws.on('message', async (message) => {
-        const { chatId } = JSON.parse(message);
-        await recibirMensajesDeRabbitMQ(chatId, ws);
+function handleCloseConnection(ws) {
+    clients.forEach((set, chatId) => {
+        if (set.has(ws)) {
+            set.delete(ws);
+        }
     });
-});
+}
+
+async function onWebSocketMessage(ws, message) {
+    const { type, chatId, sender, recipient, text } = JSON.parse(message);
+
+    if (type === 'join') {
+        handleJoinMessage(ws, chatId);
+    } else if (type === 'message') {
+        const chatQueue = `chat_${chatId}`;
+        const fullMessage = JSON.stringify({ sender, text });
+
+        let channel;
+        try {
+            channel = await getRabbitMQChannel();
+            await handleMessage(channel, chatQueue, fullMessage);
+        } catch (error) {
+            console.error(`Error al enviar mensaje a RabbitMQ en la cola '${chatQueue}':`, error.message);
+        } finally {
+            await closeChannel(channel).catch(console.error);
+        }
+    }
+}
+
+function onWebSocketConnection(ws) {
+    ws.on('message', (message) => onWebSocketMessage(ws, message));
+    ws.on('close', () => handleCloseConnection(ws));
+}
+
+module.exports = {
+    onWebSocketConnection
+};
