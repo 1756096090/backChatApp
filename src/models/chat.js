@@ -1,8 +1,8 @@
 const mongoose = require('mongoose');
 
 const mensajeSchema = new mongoose.Schema({
-    usuarioID1: { type: Number },
-    usuarioID2: { type: Number },
+    usuario1: { type: Number },
+    usuario2: { type: Number },
     mensaje: { type: String },
     fecha: { type: Date, default: Date.now }
 });

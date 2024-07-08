@@ -12,6 +12,8 @@ const {
     recibirMensajesDeRabbitMQ
 } = require('./src/controllers/rabbitMqController');
 
+const Eureka = require('eureka-js-client').Eureka;
+
 const app = express();
 app.use(cors());  // <---- Habilitar CORS
 app.use(express.json());
@@ -58,3 +60,28 @@ wss.on('connection', (ws) => {
         }
     });
 });
+
+const client = new Eureka({
+    instance: {
+      app: 'chatBackEnd',
+      hostName: 'localhost',
+      ipAddr: '127.0.0.1',
+      port: {
+        '$': 8080,
+        '@enabled': 'true',
+      },
+      vipAddress: 'chatBackEnd',
+      statusPageUrl: 'http://localhost:8080',
+      dataCenterInfo: {
+        '@class': 'com.netflix.appinfo.InstanceInfo$DefaultDataCenterInfo',
+        name: 'MyOwn',
+      },
+    },
+    eureka: {
+      host: 'localhost',
+      port: 8090,
+      servicePath: '/eureka/apps/'
+    },
+  });
+  
+  client.start();

@@ -27,13 +27,13 @@ async function closeMongoClient() {
     }
 }
 
-async function consultarMensajes(usuarioId1, usuarioId2) {
+async function consultarMensajes(usuario1, usuario2) {
     try {
         const db = client.db(DATABASE_NAME);
         const chatsCollection = db.collection('chats');
         
         const mensajes = await chatsCollection.find({
-            usuarios: { $all: [usuarioId1, usuarioId2] }
+            usuarios: { $all: [usuario1, usuario2] }
         }).toArray();
 
         console.log('Mensajes consultados desde MongoDB:', mensajes);

@@ -109,8 +109,8 @@ async function enviarMensaje(req, res) {
 
 
     const fullMessage = {
-        usuarioID1: usuario1,
-        usuarioID2: usuario2,
+        usuario1: usuario1,
+        usuario2: usuario2,
         mensaje: mensaje,
         fecha: new Date()
     };
